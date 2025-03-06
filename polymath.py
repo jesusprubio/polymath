@@ -12,7 +12,7 @@ import shutil
 from math import log2, pow
 
 from numba import cuda
-import numpy as np 
+import numpy as np
 import librosa
 import crepe
 import soundfile as sf
@@ -71,7 +71,7 @@ def video_download(vidobj,url):
     ydl_opts = {
     'outtmpl': 'library/%(id)s',
     'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best--merge-output-format mp4',
-    } 
+    }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download(url)
 
@@ -182,7 +182,7 @@ def audio_process(vids, videos):
             videos.append(video)
             write_library(videos)
             print("Finished procesing files:",len(videos))
-            
+
     return videos
 
 ################## AUDIO FEATURES ##################
@@ -300,7 +300,8 @@ def get_pitch(y_harmonic, sr, beats):
 
 def get_timbre(y, sr, beats):
     # Mel spectogram
-    S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128)
+    # S = librosa.feature.melspectrogram(y, sr=sr, n_mels=128)
+    S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
     log_S = librosa.power_to_db(S, ref=np.max)
     # MFCC - Timbre
     mfcc = librosa.feature.mfcc(S=log_S, n_mfcc=13)
@@ -314,7 +315,7 @@ def get_timbre(y, sr, beats):
 def get_segments(audio_file):
     segmenter = Segmenter()
     boundaries, labs = segmenter.proc_audio(audio_file)
-    return boundaries,labs 
+    return boundaries,labs
 
 def get_pitch_dnn(audio_file):
     # DNN Pitch Detection
@@ -337,18 +338,18 @@ def extractMIDI(audio_paths, output_dir):
     save_model_outputs = False
     save_notes = False
 
-    predict_and_save(audio_path_list=audio_paths, 
-                  output_directory=output_dir, 
-                  save_midi=save_midi, 
-                  sonify_midi=sonify_midi, 
-                  save_model_outputs=save_model_outputs, 
+    predict_and_save(audio_path_list=audio_paths,
+                  output_directory=output_dir,
+                  save_midi=save_midi,
+                  sonify_midi=sonify_midi,
+                  save_model_outputs=save_model_outputs,
                   save_notes=save_notes)
 
 
 def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False, extractMidi = False):
-    print("Quantize Audio: Target BPM", bpm, 
+    print("Quantize Audio: Target BPM", bpm,
         "-- id:",vid.id,
-        "bpm:",round(vid.audio_features["tempo"],2),
+        "bpm:",np.round(vid.audio_features["tempo"],2),
         "frequency:",round(vid.audio_features['frequency'],2),
         "key:",vid.audio_features['key'],
         "timbre:",round(vid.audio_features['timbre'],2),
@@ -394,7 +395,7 @@ def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False
     # add ending to time map
     original_length = len(y+1)
     orig_end_diff = original_length - time_map[i][0]
-    new_ending = int(round(time_map[i][1] + orig_end_diff * (tempo / bpm)))
+    new_ending = int(np.round(time_map[i][1] + orig_end_diff * (tempo / bpm)))
     new_member = (original_length, new_ending)
     time_map.append(new_member)
 
@@ -436,7 +437,7 @@ def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False
     if click:
         clicks_audio = librosa.clicks(times=fixed_beat_times, sr=sr)
         print(len(clicks_audio), len(strechedaudio))
-        clicks_audio = clicks_audio[:len(strechedaudio)] 
+        clicks_audio = clicks_audio[:len(strechedaudio)]
         path = os.path.join(os.getcwd(), 'processed', vid.id + '- click.wav')
         sf.write(path, clicks_audio, sr)
 
@@ -449,18 +450,18 @@ def get_audio_features(file,file_id,extractMidi = False):
     print("------------------------------ get_audio_features:",file_id,"------------------------------")
     print('1/8 segementation')
     segments_boundaries,segments_labels = get_segments(file)
-   
+
     print('2/8 pitch tracking')
     frequency_frames = get_pitch_dnn(file)
     average_frequency,average_key = get_average_pitch(frequency_frames)
-    
+
     print('3/8 load sample')
     y, sr = librosa.load(file, sr=None)
     song_duration = librosa.get_duration(y=y, sr=sr)
-    
+
     print('4/8 sample separation')
     y_harmonic, y_percussive = librosa.effects.hpss(y)
-    
+
     print('5/8 beat tracking')
     tempo, beats = librosa.beat.beat_track(sr=sr, onset_envelope=librosa.onset.onset_strength(y=y_percussive, sr=sr), trim=False)
 
@@ -469,7 +470,7 @@ def get_audio_features(file,file_id,extractMidi = False):
     C_sync = get_pitch(y_harmonic, sr, beats)
     M_sync = get_timbre(y, sr, beats)
     volume, avg_volume, loudness = get_volume(file)
-   
+
     print('7/8 feature aggregation')
     intensity_frames = np.matrix(CQT_sync).getT()
     pitch_frames = np.matrix(C_sync).getT()
@@ -549,7 +550,7 @@ def get_nearest(query,videos,querybpm, searchforbpm):
             #print("--- result",i['file'],i['average_frequency'],i['average_key'],"diff",comp)
     # print(nearest)
     previous_list.append(nearest.id)
-   
+
     if len(previous_list) >= len(videos)-1:
         previous_list.pop(0)
         # print("getNearestPitch: previous_list, pop first")
@@ -572,7 +573,7 @@ def main():
 
     for directory in ("processed", "library", "separated", "separated/htdemucs_6s"):
         os.makedirs(directory, exist_ok=True)
-    
+
     # Parse command line input
     parser = argparse.ArgumentParser(description='polymath')
     parser.add_argument('-a', '--add', help='youtube id', required=False)
@@ -621,7 +622,7 @@ def main():
         else:
             videos = video_process(vids,videos)
         newvids = vids
-    
+
     # List of audio to quantize
     vidargs = []
     if args.quantize is not None:
@@ -660,7 +661,7 @@ def main():
         # extract features
         else:
             # Is audio file from disk
-            if len(vid.id) > 12: 
+            if len(vid.id) > 12:
                 print('is audio', vid.id, vid.name, vid.url)
                 file = vid.url
                 # if is mp3 file
@@ -676,12 +677,12 @@ def main():
             # Save to disk
             with open(feature_file, "wb") as f:
                 pickle.dump(audio_features, f)
-        
+
         # assign features to video
         vid.audio_features = audio_features
         print(
             vid.id,
-            "tempo", round(audio_features["tempo"], 2),
+            "tempo", np.round(audio_features["tempo"], 2),
             "duration", round(audio_features["duration"], 2),
             "timbre", round(audio_features["timbre"], 2),
             "pitch", round(audio_features["pitch"], 2),
